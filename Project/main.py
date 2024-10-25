@@ -1,4 +1,5 @@
 ﻿import json
+import time
 
 import requests
 
@@ -10,7 +11,8 @@ class Script:
         self.key = "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"
         self.model = {"perplexity": "perplexity/llama-3.1-sonar-huge-128k-online",
                       "gpt": "openai/o1-mini-2024-09-12",
-                      "free": "meta-llama/llama-3.1-405b-instruct:free"}
+                      "free": "meta-llama/llama-3.1-405b-instruct:free"
+                      }
         self.parserHabr = Parser.ParserHabr()
 
     def get_chat_response(self, message, model):
@@ -46,17 +48,29 @@ class Script:
             print(f"Ошибка: {response.status_code}")
             print(response.text)
             return None
-    
+
     def get_chat_message(self, message):
-        return message["choices"][0]["message"]["content"]
+        try:
+            return message["choices"][0]["message"]["content"]
+        except BaseException:
+            time.sleep(3)
+            self.get_chat_message(message)
+
+    def generate_summary(self, post, model):
+        message = ("Напиши sammary для этого поста. И сделай так, чтобы это можно было выложить в тг канал. "
+                   "Красиво оформи смайликами и тд тп"
+                   "А В конце просто, что информация была взята отсюда: "
+                   f"Текст: {post}")
+        return self.get_chat_response(message, self.model[model])
+
+    def check_authenticity_message(self, message, model):
+        correct_message = f"Проверь данный текст на подлинность: {message}"
+        answer = self.get_chat_response(correct_message, self.model[model])
+        return answer
+
 
 if __name__ == "__main__":
     foo = Script()
     posts = foo.parserHabr.get_habr_posts()
     post = posts[1]
-    message = ("Напиши sammary для этого поста. И сделай так, чтобы это можно было выложить в тг канал. "
-               "Красиво оформи смайликами и тд тп"
-               "А В конце просто, что информация была взята отсюда: "
-               f"Текст: {post}")
-    print(message)
-    print(foo.get_chat_response(message, foo.model["free"]))
+    print(foo.generate_summary(post, "free"))
