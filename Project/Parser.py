@@ -1,8 +1,10 @@
-﻿from bs4 import BeautifulSoup
+﻿import re
+
+from bs4 import BeautifulSoup
 import requests
 
 
-class ParserHabr:
+class Parser:
     def __init__(self):
         self.habr_link = "https://habr.com/ru/posts/"
 
