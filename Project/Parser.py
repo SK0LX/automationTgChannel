@@ -3,6 +3,8 @@
 from bs4 import BeautifulSoup
 import requests
 
+import Post_object
+
 
 class Parser:
     def __init__(self):
@@ -22,7 +24,8 @@ class Parser:
                 for paragraph in paragraphs:
                     post_text += (paragraph.text.strip() + "\n")
                 post_text += "\nСсылка, откуда был взят пост : https://habr.com/ru/posts/"
-                posts.append(post_text)  # Добавляем текст поста в массив
+
+                posts.append(Post_object.Post(post_text, self.habr_link))  # Добавляем текст поста в массив
 
         except requests.exceptions.RequestException as e:
             print(f"Ошибка при запросе к Habr: {e}")

@@ -1,7 +1,10 @@
 ﻿import re
+from typing import List
 
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+
+import Post_object
 
 
 class Filters:
@@ -21,11 +24,11 @@ class Filters:
 
         return filtered_posts
 
-    def filter_posts_by_hashtags(self, posts, hashtags=None):
+    def filter_posts_by_hashtags(self, posts, hashtags=None) -> List[Post_object]:
         """
           Фильтрует список постов по хэштегам с учётом неточного совпадения(Левейнштейн).
           Args:
-            posts (list): Список постов для фильтрации.
+            posts (list): Список Post_object для фильтрации.
             hashtags (list): Список хэштегов для фильтрации.
           Returns:
             list: Отфильтрованный список постов, содержащих похожие хэштеги.
@@ -34,7 +37,7 @@ class Filters:
             return posts
         filtered_posts = []
         for post in posts:
-            hashtags_in_post = post.split("#")[1::]
+            hashtags_in_post = post.content.split("#")[1::]
             for hashtag in hashtags:
                 for post_hashtag in hashtags_in_post:
                     # Проверяем расстояние Левенштейна для каждого хэштега

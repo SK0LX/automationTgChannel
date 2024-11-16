@@ -4,7 +4,9 @@ from typing import List
 import schedule
 import requests
 
+import BaseDate
 import Parser
+import Post_object
 from Filters import Filters
 
 
@@ -17,6 +19,15 @@ class Script:
                       }
         self.parserHabr = Parser.Parser()
         self.filters = Filters()
+        # Настройки подключения
+        db_config = {
+            "host": "localhost",  # Замените на ваш хост
+            "database": "postgres",  # Имя базы данных
+            "user": "postgres",  # Пользователь базы данных
+            "password": "Lfybbk_2005"  # Пароль пользователя
+        }
+
+        self.db = BaseDate.DatabaseHandler(db_config)
 
     def get_chat_response(self, message, model):
         """Отправляет сообщение в OpenRouter и возвращает ответ.
@@ -62,13 +73,15 @@ class Script:
 
     def generate_summary(self, post, model):
         message = ("Напиши sammary для этого поста. И сделай так, чтобы это можно было выложить в тг канал. "
-                   "Красиво оформи смайликами и тд тп"
+                   "Добавь немного эмодзи"
                    "А В конце просто, что информация была взята отсюда: "
-                   f"Текст: {post}\n"  # Добавлено \n
+                   f"Текст: {post.content}\n"  # Добавлено \n
                    "и здесь хэштеги - ключевые слова")
-        return self.get_chat_response(message, self.model[model])
+        answer_gpt = self.get_chat_response(message, self.model[model])
+        post.summary = answer_gpt
+        return post
 
-    def simple_summary(self) -> List[str]:
+    def simple_summary(self) -> List[Post_object]:
         posts = self.parserHabr.get_habr_posts()
         summary = list()
         if len(posts) >= 3:
@@ -77,25 +90,29 @@ class Script:
                 summary.append(self.generate_summary(posts[i], "free"))
         return summary
 
-    def simple_summary_with_filter(self, key_worlds=None) -> List[str]:
+    def simple_summary_with_filter(self, key_worlds=None) -> List[Post_object]:
         summaries = self.simple_summary()
         if key_worlds is not None:
             key_worlds = key_worlds.split(",")
             filter_summaries = self.filters.filter_posts_by_hashtags(summaries, key_worlds)
             return filter_summaries
         return summaries
+    
+    def generated_summary(self, key_worlds=None):
+        self.db.connect()
+        summaries = self.simple_summary_with_filter(key_worlds)
+        for summary in summaries:
+            self.db.add_post(summary.content, summary.link)
+        self.db.close()
 
     def run_periodically(self):
         """Запускает обработку данных с заданной периодичностью."""
-        summaries = self.simple_summary_with_filter("ИИ, Программирование")
-        for summary in summaries:
-            print(summary)
-
+        self.generated_summary()
 
 if __name__ == "__main__":
     script = Script()
 
-    schedule.every(1).minutes.do(script.run_periodically)
+    schedule.every(5).seconds.do(script.run_periodically)
 
     while True:
         schedule.run_pending()
