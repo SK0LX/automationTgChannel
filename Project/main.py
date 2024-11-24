@@ -19,6 +19,7 @@ class Script:
             "free": "meta-llama/llama-3.2-3b-instruct:free"
         }
         self.parserHabr = Parser.Parser_Habr()
+        self.parserE1 = Parser.ParserE1()
         self.filters = Filters()
         # Настройки подключения
         db_config = {
@@ -30,10 +31,7 @@ class Script:
 
         self.db = BaseDate.DatabaseHandler(db_config)
 
-        self.topic_id = {
-            "IT": "1",
-            "Кулинария": "2"
-        }
+        self.topic_id = self.db.loadTopics()
         self.count = count
 
     def get_chat_response(self, message, model):
@@ -93,7 +91,6 @@ class Script:
                 "В конце добавь:" +
                 f"Информация была взята отсюда: {post.link}" +
                 "Хэштеги: #ключевое_слово1 #ключевое_слово2 #ключевое_слово3"
-                "сам текст должен быть до значения, которое умещается в тип character varying(100)"
         )
         answer_gpt = self.get_chat_response(message, self.model[model])
         post.summary = answer_gpt
@@ -132,9 +129,25 @@ class Script:
             self.db.add_post(summary.summary, summary.link, summary.topic_id)
         self.db.close()
 
+    def generated_summary_E1(self, count, key_worlds=None):
+        """Генерация и сохранение сводок с E1."""
+        self.db.connect()
+        posts = self.parserE1.get_E1_posts(count)  # Ожидается, что вернет список постов
+        if posts is None or not isinstance(posts, list):
+            print("Ошибка: parserE1.get_E1_posts() не вернул список постов.")
+            return
+
+        for post in posts:
+            time.sleep(10)
+            post.summary = post.content
+            post.topic_id = self.topic_id["NEWS"]
+            self.db.add_post(post.summary, post.link, post.topic_id)
+        self.db.close()
+
     def run_periodically(self):
         """Запускает обработку данных с заданной периодичностью."""
         self.generated_summary_Habr(self.count)
+        self.generated_summary_E1(self.count)
 
 
 if __name__ == "__main__":

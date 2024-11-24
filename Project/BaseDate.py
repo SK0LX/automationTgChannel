@@ -43,3 +43,22 @@ class DatabaseHandler:
         except Exception as e:
             print(f"Ошибка при добавлении поста: {e}")
             self.connection.rollback()
+
+    def loadTopics(self):
+        """Загрузка топиков из базы данных"""
+        try:
+            # Убедиться, что соединение активно
+            if not self.connection:
+                self.connect()
+    
+            # Выполнить запрос
+            self.cursor.execute("SELECT name, description FROM topics")
+            rows = self.cursor.fetchall()
+    
+            # Преобразование в словарь
+            name_description_dict = {row[0]: row[1] for row in rows}
+    
+            return name_description_dict
+        except Exception as e:
+            print(f"Ошибка при загрузке топиков: {e}")
+            return {}
