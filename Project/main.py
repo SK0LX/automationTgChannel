@@ -136,7 +136,7 @@ class Script:
 if __name__ == "__main__":
     script = Script(1)
 
-    schedule.every(1).seconds.do(script.run_periodically)
+    schedule.every(1).hours.do(script.run_periodically)
 
     while True:
         schedule.run_pending()
