@@ -30,7 +30,6 @@ class DatabaseHandler:
         :param topic_id: номер топика
         """
         try:
-# Добавление поста
             self.cursor.execute("""
                 INSERT INTO posts (content, source, is_accepted, topic_id)
                 VALUES (%s, %s, %s, %s);
@@ -50,14 +49,33 @@ class DatabaseHandler:
             # Убедиться, что соединение активно
             if not self.connection:
                 self.connect()
-    
+
             # Выполнить запрос
-            self.cursor.execute("SELECT name, description FROM topics")
+            self.cursor.execute("SELECT name, id FROM topics")
             rows = self.cursor.fetchall()
-    
+
             # Преобразование в словарь
             name_description_dict = {row[0]: row[1] for row in rows}
-    
+
+            return name_description_dict
+        except Exception as e:
+            print(f"Ошибка при загрузке топиков: {e}")
+            return {}
+
+    def loadPromts(self):
+        """Загрузка топиков из базы данных"""
+        try:
+            # Убедиться, что соединение активно
+            if not self.connection:
+                self.connect()
+
+            # Выполнить запрос
+            self.cursor.execute("SELECT topic_id, prompt_text FROM prompts")
+            rows = self.cursor.fetchall()
+
+            # Преобразование в словарь
+            name_description_dict = {row[0]: row[1] for row in rows}
+
             return name_description_dict
         except Exception as e:
             print(f"Ошибка при загрузке топиков: {e}")

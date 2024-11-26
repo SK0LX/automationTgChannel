@@ -1,7 +1,6 @@
-﻿import json
-import requests
+﻿import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict
+from typing import List
 import feedparser
 from urllib.parse import urlparse, urlunparse
 import Post_object
@@ -17,7 +16,8 @@ class Parser_Habr:
         posts = []
         try:
             # Получаем RSS-канал
-            feed = feedparser.parse(self.rss_link)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'}
+            feed = feedparser.parse(self.rss_link, request_headers=headers)
 
             if feed.bozo:
                 raise ValueError(f"Ошибка чтения RSS: {feed.bozo_exception}")
@@ -36,15 +36,16 @@ class Parser_Habr:
                 if entry.link in self.set_post:
                     continue
                 link = self._shorten_url(entry.link)
-                self.set_post.add(link)
-                # Формируем текст поста
-                post_text = f"{entry.title}\n\n{entry.summary}\n\n"
-                posts.append(Post_object.Post(post_text, link))
 
-            # Обновляем время последнего обработанного поста
-            if feed.entries:
-                latest_post_time = max(entry.published_parsed for entry in feed.entries if 'published_parsed' in entry)
-                self.last_processed_time = latest_post_time
+                # Извлекаем чистый текст из summary
+                summary_html = entry.summary
+                summary_text = BeautifulSoup(summary_html, 'html.parser').get_text()
+
+                # Формируем текст поста
+                post_text = f"{entry.title}\n\n{summary_text}\n\n"
+                if link not in self.set_post:
+                    posts.append(Post_object.Post(post_text, link))
+                    self.set_post.add(link)
 
         except Exception as e:
             print(f"Произошла ошибка при парсинге RSS: {e}")
@@ -92,3 +93,11 @@ class ParserE1:
                     self.set_post.add(link)
 
         return posts
+
+
+if __name__ == "__main__":
+    parser = Parser_Habr()
+    posts = parser.get_habr_posts(3)
+    for post in posts:
+        print(post.content)
+        print(post.link)
