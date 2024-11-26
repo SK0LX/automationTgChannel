@@ -23,7 +23,7 @@ class Parser_Habr:
                 raise ValueError(f"Ошибка чтения RSS: {feed.bozo_exception}")
 
             for entry in feed.entries:
-                if posts.count == count:
+                if len(posts) == count:
                     break
                 # Проверяем, есть ли дата публикации
                 if 'published_parsed' in entry:
@@ -38,7 +38,7 @@ class Parser_Habr:
                 link = self._shorten_url(entry.link)
                 self.set_post.add(link)
                 # Формируем текст поста
-                post_text = f"{entry.title}\n\n{entry.summary}\n\nСсылка на пост: {link}"
+                post_text = f"{entry.title}\n\n{entry.summary}\n\n"
                 posts.append(Post_object.Post(post_text, link))
 
             # Обновляем время последнего обработанного поста
@@ -77,7 +77,7 @@ class ParserE1:
         # Ищем статьи
         articles = soup.find_all("article", {"data-test": "archive-record-item"})
         for article in articles:
-            if posts.count == count:
+            if len(posts) == count:
                 break
             # Ищем ссылку на новость
             link_tag = article.find("a", {"data-test": "archive-record-image"})

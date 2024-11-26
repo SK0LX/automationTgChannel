@@ -16,7 +16,8 @@ class Script:
         self.model = {
             "perplexity": "perplexity/llama-3.1-sonar-huge-128k-online",
             "": "openai/o1-mini-2024-09-12",
-            "free": "meta-llama/llama-3.2-3b-instruct:free"
+            "free": "meta-llama/llama-3.2-3b-instruct:free",
+            "free2": "liquid/lfm-40b:free"
         }
         self.parserHabr = Parser.Parser_Habr()
         self.parserE1 = Parser.ParserE1()
@@ -77,23 +78,18 @@ class Script:
 
     def generate_summary(self, post, model):
         message = (
-                "Создай яркое и привлекательное сводку для этого поста, которая будет интересной и информативной для "
-                "подписчиков в Telegram-канале."
-                "Сделай текст компактным, но при этом ярким и насыщенным, добавь эмодзи для улучшения восприятия, "
-                "где это уместно."
-                " Сделай так, чтобы читатель мог быстро понять суть, но при этом захочет прочитать весь пост." +
+                "Напиши яркую и привлекательную сводку для Telegram-поста, не более 10-15 строк."
+                "Текст должен быть информативным, интригующим и мотивировать читателя на прочтение всего поста."
+                " Используй эмодзи для улучшения восприятия."
+                " Сводка должна чётко передавать суть поста без лишних подробностей."+
 
-                "Не забудь в конце добавить ссылку на источник информации и указать хэштеги, соответствующие ключевым "
-                "словам поста." +
-
-                f"Текст: {post.content}" +
-
-                "В конце добавь:" +
-                f"Информация была взята отсюда: {post.link}" +
-                "Хэштеги: #ключевое_слово1 #ключевое_слово2 #ключевое_слово3"
+                f"Текст поста:{post.content}"+
+                "В конце добавь хэштеги. Их возьми из поста(если есть или сам придумай, основополагаясь на текст):" +
+                "Хэштеги: (и здесь должно быть 3 хэштега))"+
+                "В конце добавь хэштеги, используя предоставленные ключевые слова. Избегай ссылок, рекламы и слов-паразитов. Оформление должно быть стильным и привлекательным."
         )
         answer_gpt = self.get_chat_response(message, self.model[model])
-        post.summary = answer_gpt
+        post.summary = answer_gpt + f"\nИнформация была взята отсюда: {post.link}"
         return post
 
     def simple_summary(self, posts: List[Post_object], count) -> List[Post_object]:
@@ -133,27 +129,28 @@ class Script:
         """Генерация и сохранение сводок с E1."""
         self.db.connect()
         posts = self.parserE1.get_E1_posts(count)  # Ожидается, что вернет список постов
+        print(len(posts))
         if posts is None or not isinstance(posts, list):
             print("Ошибка: parserE1.get_E1_posts() не вернул список постов.")
             return
 
         for post in posts:
             time.sleep(10)
-            post.summary = post.content
+            post.summary = post.content + f"\n**Информация была взята отсюда: {post.link}**"
             post.topic_id = self.topic_id["NEWS"]
             self.db.add_post(post.summary, post.link, post.topic_id)
         self.db.close()
 
-    def run_periodically(self):
+    def run_periodically(self): 
         """Запускает обработку данных с заданной периодичностью."""
         self.generated_summary_Habr(self.count)
         self.generated_summary_E1(self.count)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     script = Script(5)
 
-    schedule.every(5).seconds.do(script.run_periodically)
+    schedule.every(1).seconds.do(script.run_periodically)
 
     while True:
         schedule.run_pending()
