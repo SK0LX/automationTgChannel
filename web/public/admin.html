@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="apple-touch-icon" sizes="57x57" href="fav/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="fav/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="fav/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="fav/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="fav/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="fav/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="fav/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="fav/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="fav/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="fav/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="fav/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="fav/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="fav/favicon-16x16.png">
+    <link rel="manifest" href="fav/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="fav/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <style>
+        /* Основные цвета в черно-белой палитре */
+        :root {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #333;
+            --input-bg: #222;
+            --border-color: #555;
+            --text-color: #f0f0f0;
+            --error-color: #ff4d4d;
+        }
+
+        /* Общий стиль страницы */
+        body {
+            margin: 0;
+            background-color: var(--primary-bg);
+            font-family: 'Roboto', sans-serif;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding-top: 20px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+            background-color: var(--secondary-bg);
+            border-radius: 8px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+            border-radius: 10%;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        label, h3, h4 {
+            font-size: 1em;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+
+        input[type="text"] {
+            width: 97%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 1em;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 1em;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--text-color);
+            color: var(--primary-bg);
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+            margin: 5px 0;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: var(--border-color);
+        }
+
+        #posts-list, #sites-list, #prompts-list {
+            padding: 10px;
+            background-color: var(--input-bg);
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .post-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: var(--input-bg);
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .post-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .post-buttons button {
+            padding: 5px 10px;
+            font-size: 1em;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="img/logo.jpg" alt="Logo" class="logo">
+            <h2>Admin Panel</h2>
+        </div>
+        
+        <h3>Add New Topic</h3>
+        <input type="text" id="new-topic" placeholder="New Topic Name">
+        <button id="add-topic-button">Add Topic ➕</button>
+        
+        <h3>Select a Topic</h3>
+        <form id="topic-form" method="POST">
+            <label for="topic">Select Topic:</label>
+            <select id="topic" name="topic">
+                <!-- Варианты тем будут подгружены с бэкенда -->
+            </select>
+            <button type="submit">Load Posts ⚙️</button>
+        </form>
+
+        <h3>Posts for Topic: <span id="topic-name"></span></h3>
+        <div id="posts-list"></div>
+
+        <h3>Manage Sites and Prompts</h3>
+
+        <h4>Sites</h4>
+        <div id="sites-list" style="display: none;"></div>
+        <input type="text" id="new-site" placeholder="New site URL" style="display: none;">
+        <button id="add-site-button" style="display: none;">Add Site ➕</button>
+
+        <h4>Prompts</h4>
+        <div id="prompts-list" style="display: none;"></div>
+        <input type="text" id="new-prompt" placeholder="New prompt text" style="display: none;">
+        <button id="add-prompt-button" style="display: none;">Add Prompt ➕</button>
+        
+        <h4>Telegram Channel</h4>
+        <input type="text" id="tg-channel-name" placeholder="Telegram Channel Name" style="display: block;">
+        <input type="text" id="tg-channel-id" placeholder="Telegram Channel ID" style="display: block;">
+        <button id="add-tg-channel-button" style="display: block;">Add Telegram Channel ➕</button>
+
+
+
+
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const topicSelect = document.getElementById('topic');
+            const topicNameSpan = document.getElementById('topic-name');
+            const postsList = document.getElementById('posts-list');
+            const sitesList = document.getElementById('sites-list');
+            const promptsList = document.getElementById('prompts-list');
+            const newSiteInput = document.getElementById('new-site');
+            const addSiteButton = document.getElementById('add-site-button');
+            const newPromptInput = document.getElementById('new-prompt');
+            const addPromptButton = document.getElementById('add-prompt-button');
+            const newTopicInput = document.getElementById('new-topic');
+            const addTopicButton = document.getElementById('add-topic-button');
+
+            // Элементы для Telegram-канала
+            const tgChannelInput = document.getElementById('tg-channel-id');
+            const tgChannelNameInput = document.getElementById('tg-channel-name');
+            const addTgChannelButton = document.getElementById('add-tg-channel-button');
+
+            // Подгружаем топики
+            const topicsResponse = await fetch('/topics');
+            const topics = await topicsResponse.json();
+            topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic.id;
+                option.textContent = topic.name;
+                topicSelect.appendChild(option);
+            });
+
+            // Обработчик загрузки постов
+            document.getElementById('topic-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const topicId = topicSelect.value;
+                topicNameSpan.textContent = topicSelect.options[topicSelect.selectedIndex].text;
+
+                // Получаем канал для выбранного топика
+                const tgChannelResponse = await fetch(`/tg-channel/${topicId}`);
+                if (tgChannelResponse.ok) {
+                    const tgChannelData = await tgChannelResponse.json();
+                    tgChannelNameInput.value = tgChannelData.channel_name;
+                    tgChannelInput.value = tgChannelData.channel_id;
+                } else {
+                    tgChannelNameInput.value = '';
+                    tgChannelInput.value = '';
+                }
+
+                // Показываем поле и кнопку для Telegram-канала
+                tgChannelInput.style.display = 'block';
+                tgChannelNameInput.style.display = 'block';
+                addTgChannelButton.style.display = 'block';
+
+                // Получаем посты для выбранного топика
+                const postsResponse = await fetch('/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ topic: topicId })
+                });
+                const posts = await postsResponse.json();
+                postsList.innerHTML = '';
+
+                posts.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'post-container';
+                    postDiv.innerHTML = `
+                        <p>${post.content} <a href="${post.source}" target="_blank">Source</a></p>
+                        <div class="post-buttons">
+                            <button onclick="postAction(${post.id}, 'accept')">✅</button>
+                            <button onclick="postAction(${post.id}, 'reject')">⛔</button>
+                        </div>
+                    `;
+                    postsList.appendChild(postDiv);
+                });
+
+                // Получаем сайты и промты для выбранного топика
+                const sitesResponse = await fetch(`/sites/${topicId}`);
+                const sites = await sitesResponse.json();
+                sitesList.innerHTML = sites.map(site => `<p>${site.site_url}</p>`).join('');
+                sitesList.style.display = 'block'; 
+                newSiteInput.style.display = 'block';
+                addSiteButton.style.display = 'block';
+                
+                const promptsResponse = await fetch(`/prompts/${topicId}`);
+                const prompts = await promptsResponse.json();
+                promptsList.innerHTML = prompts.map(prompt => `<p>${prompt.prompt_text}</p>`).join('');
+                promptsList.style.display = 'block'; 
+                newPromptInput.style.display = 'block';
+                addPromptButton.style.display = 'block';
+            };
+
+            addTgChannelButton.onclick = async () => {
+                const tgChannelName = document.getElementById('tg-channel-name').value;
+                const tgChannelId = document.getElementById('tg-channel-id').value;
+                const topicId = topicSelect.value;
+
+                if (!tgChannelName || !tgChannelId || !topicId) {
+                    alert('Please select a topic and enter both the Telegram Channel Name and ID');
+                    return;
+                }
+
+                await fetch('/tg-channels/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelName: tgChannelName,
+                        channelId: tgChannelId,
+                        topicId: topicId,
+                    }),
+                });
+
+                document.getElementById('tg-channel-name').value = '';
+                document.getElementById('tg-channel-id').value = '';
+            };
+
+
+            // Обработчик добавления сайта
+            addSiteButton.onclick = async () => {
+                const newSite = newSiteInput.value;
+                const topicId = topicSelect.value;
+                if (!newSite || !topicId) {
+                    alert('Please select a topic and enter a site URL');
+                    return;
+                }
+                await fetch('/sites/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ site: newSite, topicId: topicId })
+                });
+                newSiteInput.value = '';
+            };
+
+            // Обработчик добавления промта
+            addPromptButton.onclick = async () => {
+                const newPrompt = newPromptInput.value;
+                const topicId = topicSelect.value;
+                if (!newPrompt || !topicId) {
+                    alert('Please select a topic and enter a prompt text');
+                    return;
+                }
+                await fetch('/prompts/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: newPrompt, topicId: topicId })
+                });
+                newPromptInput.value = '';
+            };
+
+            // Обработчик добавления нового топика
+            addTopicButton.onclick = async () => {
+                const newTopicName = newTopicInput.value;
+                if (!newTopicName) {
+                    alert('Please enter a topic name');
+                    return;
+                }
+                await fetch('/topics/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: newTopicName })
+                });
+                newTopicInput.value = '';
+                // Обновление списка топиков
+                const topicsResponse = await fetch('/topics');
+                const topics = await topicsResponse.json();
+                topicSelect.innerHTML = '';
+                topics.forEach(topic => {
+                    const option = document.createElement('option');
+                    option.value = topic.id;
+                    option.textContent = topic.name;
+                    topicSelect.appendChild(option);
+                });
+            };
+        });
+
+        // Функция для выполнения действий с постами
+        async function postAction(postId, action) {
+            const response = await fetch(`/posts/${postId}/${action}`, {
+                method: 'POST',
+            });
+            const result = await response.text();
+            alert(result);
+            document.getElementById('topic-form').onsubmit();
+        }
+
+    </script>
+</body>
+</html>
