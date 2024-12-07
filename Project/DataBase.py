@@ -70,7 +70,7 @@ class DatabaseHandler:
                 self.connect()
 
             # Выполнить запрос
-            self.cursor.execute("SELECT topic_id, prompt_text FROM prompts")
+            self.cursor.execute("SELECT site_id, prompt_text FROM prompts")
             rows = self.cursor.fetchall()
 
             # Преобразование в словарь
@@ -79,4 +79,53 @@ class DatabaseHandler:
             return name_description_dict
         except Exception as e:
             print(f"Ошибка при загрузке топиков: {e}")
+            return {}
+
+    def loadSites(self):
+        """Загрузка топиков из базы данных"""
+        try:
+            # Убедиться, что соединение активно
+            if not self.connection:
+                self.connect()
+
+            # Выполнить запрос
+            self.cursor.execute("SELECT id, site_url FROM sites")
+            rows = self.cursor.fetchall()
+
+            # Преобразование в словарь
+            name_description_dict = {row[0]: row[1] for row in rows}
+
+            return name_description_dict
+        except Exception as e:
+            print(f"Ошибка при загрузке топиков: {e}")
+            return {}
+
+
+    def topic_id_to_site_id(self):
+        """
+        Получить словарь topic_id -> [site_id]
+        """
+        try:
+            # Убедиться, что соединение активно
+            if not self.connection:
+                self.connect()
+    
+            # Выполнить запрос для получения связи topic_id -> site_id
+            self.cursor.execute("""
+                SELECT topic_id, id
+                FROM sites;
+            """)
+            rows = self.cursor.fetchall()
+    
+            # Построить словарь
+            topic_to_site = {}
+            for topic_id, site_id in rows:
+                if topic_id not in topic_to_site:
+                    topic_to_site[topic_id] = []
+                topic_to_site[topic_id].append(site_id)
+    
+            return topic_to_site
+    
+        except Exception as e:
+            print(f"Ошибка при создании словаря topic_id -> site_id: {e}")
             return {}

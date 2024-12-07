@@ -19,8 +19,7 @@ class Script:
             "free": "meta-llama/llama-3.2-3b-instruct:free",
             "free2": "liquid/lfm-40b:free"
         }
-        self.parserHabr = Parser.Parser_Habr()
-        self.parserE1 = Parser.ParserE1()
+        self.parserRss = Parser.Parser_Rss()
         self.filters = Filters()
         # Настройки подключения
         db_config = {
@@ -34,6 +33,8 @@ class Script:
 
         self.topic_id = self.db.loadTopics()
         self.prompts = self.db.loadPromts()
+        self.sites = self.db.loadSites()
+        self.topic_id_to_site_id = self.db.topic_id_to_site_id()
         self.count = count
 
     def get_chat_response(self, message, model):
@@ -77,29 +78,29 @@ class Script:
             time.sleep(10)  # Подождать перед повторной попыткой
             return self.get_chat_message(message)
 
-    def generate_summary(self, post, model, name_topic):
+    def generate_summary(self, post, model, site_id: int):
         message = (
-            self.prompts[self.topic_id[name_topic]]
+            self.prompts[site_id]
             .format(post.content)
         )
         answer_gpt = self.get_chat_response(message, self.model[model])
         post.summary = answer_gpt + f"\nИнформация была взята отсюда: {post.link}"
         return post
 
-    def simple_summary(self, posts: List[Post_object], count, name_topic) -> List[Post_object]:
+    def simple_summary(self, posts: List[Post_object], count, site_id: int) -> List[Post_object]:
         """Создает краткие версии для списка постов."""
         summary = []
         if len(posts) >= count:
             for i in range(count):
                 time.sleep(10)
                 print(f"Обрабатывается пост {i + 1}")
-                summary.append(self.generate_summary(posts[i], "free", name_topic=name_topic))
+                summary.append(self.generate_summary(posts[i], "free", site_id=site_id))
         return summary
 
-    def simple_summary_with_filter(self, posts: List[Post_object], count, name_topic, key_worlds=None) -> List[
+    def simple_summary_with_filter(self, posts: List[Post_object], count, site_id, key_worlds=None) -> List[
         Post_object]:
         """Создает краткие версии постов и фильтрует их по ключевым словам."""
-        summaries = self.simple_summary(posts, count, name_topic=name_topic)
+        summaries = self.simple_summary(posts, count, site_id=site_id)
         if key_worlds:
             key_worlds = key_worlds.split(",")
             filter_summaries = self.filters.filter_posts_by_hashtags(summaries, key_worlds)
@@ -108,35 +109,28 @@ class Script:
 
     def generated_posts(self, count, name_topic, parser, key_worlds=None):
         self.db.connect()
-        posts = parser(count)  # Ожидается, что вернет список постов
         summaries = None
-        if name_topic == "IT":
-            summaries = self.simple_summary_with_filter(posts, count, name_topic=name_topic, key_worlds=key_worlds)
-        else:
-            summaries = posts
-            for summary in summaries:
-                summary.summary = summary.content
+        for sites_id in self.topic_id_to_site_id.values():
+            for site_id in sites_id:
+                posts = parser(self.sites[site_id],count)
+                summaries = self.simple_summary_with_filter(posts, count, site_id=site_id, key_worlds=key_worlds)
         for summary in summaries:
             summary.topic_id = self.topic_id[name_topic]
             self.db.add_post(summary.summary, summary.link, summary.topic_id)
         self.db.close()
 
-    def generated_summary_Habr(self, count, key_worlds=None):
-        self.generated_posts(count=count, name_topic="IT", parser=self.parserHabr.get_habr_posts, key_worlds=key_worlds)
-
-    def generated_summary_E1(self, count, key_worlds=None):
-        self.generated_posts(count=count, name_topic="NEWS", parser=self.parserE1.get_E1_posts, key_worlds=key_worlds)
+    def generated_summary_Rss(self, count, key_worlds=None):
+        self.generated_posts(count=count, name_topic="IT", parser=self.parserRss.get_rss_posts, key_worlds=key_worlds)
 
     def run_periodically(self):
         """Запускает обработку данных с заданной периодичностью."""
-        self.generated_summary_Habr(self.count)
-        self.generated_summary_E1(self.count)
+        self.generated_summary_Rss(self.count)
 
 
 if __name__ == "__main__":
     script = Script(1)
 
-    schedule.every(1).hours.do(script.run_periodically)
+    schedule.every(1).seconds.do(script.run_periodically)
 
     while True:
         schedule.run_pending()

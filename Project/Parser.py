@@ -6,18 +6,17 @@ from urllib.parse import urlparse, urlunparse
 import Post_object
 
 
-class Parser_Habr:
+class Parser_Rss:
     def __init__(self):
-        self.rss_link = "https://habr.com/ru/rss/"
         self.last_processed_time = None  # Время последнего обработанного поста
         self.set_post = set()
 
-    def get_habr_posts(self, count):
+    def get_rss_posts(self,url, count):
         posts = []
         try:
             # Получаем RSS-канал
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'}
-            feed = feedparser.parse(self.rss_link, request_headers=headers)
+            feed = feedparser.parse(url, request_headers=headers)
 
             if feed.bozo:
                 raise ValueError(f"Ошибка чтения RSS: {feed.bozo_exception}")
@@ -96,8 +95,8 @@ class ParserE1:
 
 
 if __name__ == "__main__":
-    parser = Parser_Habr()
-    posts = parser.get_habr_posts(3)
+    parser = Parser_Rss()
+    posts = parser.get_rss_posts("https://habr.com/ru/rss/articles/",3)
     for post in posts:
         print(post.content)
         print(post.link)
