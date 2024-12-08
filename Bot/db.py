@@ -15,6 +15,7 @@ class DBOperator:
     def __init__(self):
         self.connection = psycopg2.connect(**DB_CONFIG)
         self.cursor = self.connection.cursor()
+        self.topics = self.get_topics()
 
     def get_admin_ids(self):
         try:
@@ -28,6 +29,32 @@ class DBOperator:
     def get_posts(self):
         try:
             self.cursor.execute("SELECT id, content, created_at, is_accepted FROM posts WHERE is_accepted = FALSE;")
+            posts = []
+            lines = self.cursor.fetchall()
+            for line in lines:
+                posts.append(Post(id=int(line[0]), content=line[1], creation_time=line[2]))
+            return posts
+
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
+
+    def get_topics(self):
+        try:
+            self.cursor.execute("SELECT name, id FROM topics;")
+            topics = {}
+            lines = self.cursor.fetchall()
+            for line in lines:
+                topics[str(line[0])] = int(line[1])
+            return topics
+
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
+
+    def get_posts_by_topic(self, topic_name):
+        try:
+            topic_id = self.topics[topic_name]
+            self.cursor.execute(f"SELECT id, content, created_at, is_accepted FROM posts WHERE is_accepted = FALSE "
+                                f"AND topic_id = {topic_id};")
             posts = []
             lines = self.cursor.fetchall()
             for line in lines:

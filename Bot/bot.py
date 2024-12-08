@@ -1,8 +1,8 @@
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import KeyboardButton
+from aiogram import Bot, Dispatcher, Router, types, F
+from aiogram.types import KeyboardButton, InlineKeyboardButton
 from aiogram.filters import CommandStart
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram import F
 from db import DBOperator
 import logging
@@ -17,18 +17,21 @@ class BotHandler:
     def __init__(self, token: str):
         self.bot = Bot(token=token)
         self.dp = Dispatcher()
+        self.router = Router()
         self.operator = DBOperator()
         self.ADMINS = self.operator.get_admin_ids()
         self.setup_handlers()
+        self.topic = ""
         self.posts = []
 
     def setup_handlers(self):
-        self.dp.message(CommandStart())(self.cmd_start)
-        self.dp.message(F.text == "В главное меню")(self.cmd_start)
-        self.dp.message(F.text == "Модерировать посты")(self.handle_moderation)
-        self.dp.message(F.text == "Продолжить модерацию")(self.handle_moderation)
-        self.dp.message(F.text == "Принять пост")(self.handle_accept)
-        self.dp.message(F.text == "Отклонить пост")(self.handle_decline)
+        self.router.message(CommandStart())(self.cmd_start)
+        self.router.message(F.text == "В главное меню")(self.cmd_start)
+        self.router.message(F.text == "Модерировать посты")(self.handle_moderation)
+        self.router.message(F.text == "Продолжить модерацию")(self.handle_moderation)
+        self.router.message(F.text == "Принять пост")(self.handle_accept)
+        self.router.message(F.text == "Отклонить пост")(self.handle_decline)
+        self.router.callback_query(F.data.startswith("chose"))(self.chose_topic)
 
     def get_start_keyboard(self):
         keyboard = ReplyKeyboardBuilder()
@@ -47,20 +50,40 @@ class BotHandler:
         keyboard.add(KeyboardButton(text="В главное меню"))
         return keyboard.as_markup(resize_keyboard=True)
 
+    def get_return_keyboard(self):
+        keyboard = ReplyKeyboardBuilder()
+        keyboard.add(KeyboardButton(text="В главное меню"))
+        return keyboard.as_markup(resize_keyboard=True)
+
+    def get_topics_keyboard(self):
+        keyboard = InlineKeyboardBuilder()
+        for topic in self.operator.topics.keys():
+            keyboard.add(InlineKeyboardButton(text=topic, callback_data=f"chose_{topic}"))
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
     async def cmd_start(self, message: types.Message):
-        await message.answer("Привет! Выбери команду:", reply_markup=self.get_start_keyboard())
+        await message.answer("Привет! Выбери тему постов:", reply_markup=self.get_topics_keyboard())
+
+    async def chose_topic(self, callback_query: types.CallbackQuery):
+        self.topic = callback_query.data.split("_", 1)[1]
+        await callback_query.message.answer(f"Вы выбрали тему {self.topic}", reply_markup=self.get_continue_keyboard())
+        await callback_query.answer()
 
     async def handle_moderation(self, message: types.Message):
         user_id = message.from_user.id
         if user_id not in self.ADMINS:
             await message.answer("Эта команда доступна только администраторам.")
             return
-        self.posts = self.operator.get_posts()
-        if self.posts:
-            post = self.posts[0]
-            await message.answer(f"Содержание поста: {post.content}", reply_markup=self.get_moderation_keyboard())
+        if self.topic == "":
+            await message.answer(f"Тема постов не выбрана", reply_markup=self.get_return_keyboard())
         else:
-            await message.answer("Нет доступных постов для модерации.")
+            self.posts = self.operator.get_posts_by_topic(self.topic)
+            if self.posts:
+                post = self.posts[0]
+                await message.answer(f"Содержание поста: {post.content}", reply_markup=self.get_moderation_keyboard())
+            else:
+                await message.answer("Нет доступных постов для модерации.")
 
     async def handle_accept(self, message: types.Message):
         post = self.posts.pop(0)
@@ -75,6 +98,7 @@ class BotHandler:
         await message.answer("Пост отклонён!", reply_markup=self.get_continue_keyboard())
 
     async def run(self):
+        self.dp.include_router(self.router)
         await self.dp.start_polling(self.bot)
 
 
