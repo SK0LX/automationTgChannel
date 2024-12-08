@@ -93,7 +93,7 @@ class Script:
         if len(posts) >= count:
             for i in range(count):
                 time.sleep(10)
-                print(f"Обрабатывается пост {i + 1}")
+                print(f"Обрабатывается пост {site_id}")
                 summary.append(self.generate_summary(posts[i], "free", site_id=site_id))
         return summary
 
@@ -109,14 +109,15 @@ class Script:
 
     def generated_posts(self, count, name_topic, parser, key_worlds=None):
         self.db.connect()
-        summaries = None
+        topics_posts = []
         for sites_id in self.topic_id_to_site_id.values():
             for site_id in sites_id:
                 posts = parser(self.sites[site_id],count)
-                summaries = self.simple_summary_with_filter(posts, count, site_id=site_id, key_worlds=key_worlds)
-        for summary in summaries:
-            summary.topic_id = self.topic_id[name_topic]
-            self.db.add_post(summary.summary, summary.link, summary.topic_id)
+                topics_posts.append(self.simple_summary_with_filter(posts, count, site_id=site_id, key_worlds=key_worlds))
+        for topic in topics_posts:
+            for summary in topic:
+                summary.topic_id = self.topic_id[name_topic]
+                self.db.add_post(summary.summary, summary.link, summary.topic_id)
         self.db.close()
 
     def generated_summary_Rss(self, count, key_worlds=None):
@@ -124,7 +125,21 @@ class Script:
 
     def run_periodically(self):
         """Запускает обработку данных с заданной периодичностью."""
+        self.updateInformation()
         self.generated_summary_Rss(self.count)
+
+    def updateInformation(self):
+        db_config = {
+            "host": "localhost",  # Замените на ваш хост
+            "database": "postgres",  # Имя базы данных
+            "user": "postgres",  # Пользователь базы данных
+            "password": "Lfybbk_2005"  # Пароль пользователя
+        }
+        self.db = DataBase.DatabaseHandler(db_config)
+        self.topic_id = self.db.loadTopics()
+        self.prompts = self.db.loadPromts()
+        self.sites = self.db.loadSites()
+        self.topic_id_to_site_id = self.db.topic_id_to_site_id()
 
 
 if __name__ == "__main__":
