@@ -20,10 +20,12 @@ class PostGenerator(IPostGenerator):
     def generate(self, posts: List[Post_object], model: str, site_id: int) -> List[Post_object]:
         summaries = []
         for post in posts:
-            message = self.prompts[site_id].format(post.content)
+            message = (self.prompts[site_id])
+            message += "Teкст {}".format(post.content)
             summary = self.ai_client.send_message(model, message)
-            post.summary = f"{summary}\nИсточник: {post.link}"
-            summaries.append(post)
+            if self.summary_is_vallidate(summary):
+                post.summary = f"{summary}\nИсточник: {post.link}"
+                summaries.append(post)
         return summaries
 
     def simple_summary(self, posts: List[Post_object], model, count, site_id: int) -> List[Post_object]:
@@ -31,3 +33,12 @@ class PostGenerator(IPostGenerator):
         if len(posts) >= count:
             return self.generate(posts[::count], model=model, site_id=site_id)
         return self.generate(posts, model=model, site_id=site_id)
+
+    def summary_is_vallidate(self, summary):
+        if summary is None:
+            return False
+        if len(summary) == 0:
+            return False
+        if len(summary) > 4096:
+            return False
+        return True

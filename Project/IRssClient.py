@@ -19,6 +19,7 @@ class RssClient(IRssClient):
 
     def get_posts(self, url: str, count: int) -> List[Post_object]:
         posts = []
+        self.update_visited_posts()
         try:
             # Получаем RSS-канал
             headers = {
@@ -53,7 +54,6 @@ class RssClient(IRssClient):
                 if link not in self.visitedPosts:
                     posts.append(Post_object.Post(post_text, link))
                     self.db.add_visited_post(link)
-
         except Exception as e:
             print(f"Произошла ошибка при парсинге RSS: {e}")
         return posts  # Возвращаем массив с постами
@@ -63,3 +63,6 @@ class RssClient(IRssClient):
         parsed_url = urlparse(url)
         shortened_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, '', '', ''))
         return shortened_url
+    
+    def update_visited_posts(self):
+        self.visitedPosts = self.db.load_visited_posts()
