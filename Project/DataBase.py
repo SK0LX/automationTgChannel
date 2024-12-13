@@ -24,11 +24,11 @@ class DatabaseHandler(IDataBase):
         if self.connection:
             self.connection.close()
 
-    def add_post(self, content: str, source: str, topic_id: int) -> None:
+    def add_post(self, content: str, source: str, topic_id: int, group_id: int) -> None:
         self.connect()
-        query = "INSERT INTO posts (content, source, is_accepted, topic_id) VALUES (%s, %s, %s, %s)"
+        query = "INSERT INTO posts (content, source, is_accepted, topic_id, group_id) VALUES (%s, %s, %s, %s, %s)"
         try:
-            self.cursor.execute(query, (content, source, False, topic_id))
+            self.cursor.execute(query, (content, source, False, topic_id, group_id))
             self.connection.commit()
         except Exception as e:
             self.connection.rollback()
@@ -58,10 +58,10 @@ class DatabaseHandler(IDataBase):
         self.close()
         return urls
 
-    def load_topics(self) -> Dict[str, int]:
-        """:return Dict[topic_name: topic_id]"""
+    def load_topics_to_grops(self) -> Dict[int, int]:
+        """:return Dict[topic_id: group_id]"""
         self.connect()
-        query = "SELECT name, id FROM topics"
+        query = "SELECT id, group_id FROM topics"
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         self.close()

@@ -12,11 +12,11 @@ class IDataBase(ABC):
         pass
 
     @abstractmethod
-    def add_post(self, content: str, source: str, topic_id: int) -> None:
+    def add_post(self, content: str, source: str, topic_id: int, group_id:int) -> None:
         pass
 
     @abstractmethod
-    def load_topics(self) -> Dict[str, int]:
+    def load_topics_to_grops(self) -> Dict[int, int]:
         pass
 
     @abstractmethod

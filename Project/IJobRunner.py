@@ -10,7 +10,7 @@ class JobRunner:
         self.rss_client = rss_client
         self.post_generator = post_generator
         self.db = db
-        self.topics = self.db.load_topics()
+        self.topics = self.db.load_topics_to_grops()
         self.prompts = self.db.load_prompts()
         self.sites = self.db.load_sites()
         self.site_id_to_topic_id = self.db.site_id_to_topic_id()
@@ -19,10 +19,11 @@ class JobRunner:
         self.update_db()
         for site_id, site_url in self.sites.items():
             posts = self.rss_client.get_posts(site_url, count)
-            summaries = self.post_generator.simple_summary(posts=posts, model=model, count=count,site_id=site_id)
+            summaries = self.post_generator.simple_summary(posts=posts, model=model, count=count, site_id=site_id)
             time.sleep(10)
             for summary in summaries:
-                self.db.add_post(summary.summary, summary.link, topic_id=self.site_id_to_topic_id[site_id])
+                self.db.add_post(summary.summary, summary.link, topic_id=self.site_id_to_topic_id[site_id],
+                                 group_id=self.topics[self.site_id_to_topic_id[site_id]])
     
     def update_db(self):
         self.sites = self.db.load_sites()
