@@ -9,7 +9,7 @@
         │ Web Admin     │        │ Content AI │      │ Telegram  │
         │ Panel         │        │ Filtering  │      │ Bot       │
         └───────┬───────┘        └──────▲─────┘      └─────▲─────┘
-                │                          │                │
+                │                                           │
                 └─────────[ Moderator Actions ]─────────────┘
                                 Accept/Reject/Edit
 ```
