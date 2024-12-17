@@ -3,13 +3,6 @@ from typing import Dict, List
 
 
 class IDataBase(ABC):
-    @abstractmethod
-    def connect(self) -> None:
-        pass
-
-    @abstractmethod
-    def close(self) -> None:
-        pass
 
     @abstractmethod
     def add_post(self, content: str, source: str, topic_id: int, group_id:int) -> None:

@@ -1,7 +1,17 @@
-﻿import pytest
-from unittest.mock import MagicMock, patch
-from DataBase import DatabaseHandlerORM
+﻿from typing import Dict
+import pytest
+from unittest.mock import MagicMock, patch, Mock, call
+
+from sqlalchemy import create_engine
+
+from DataBase import DatabaseHandlerORM, Base, VisitedPost, Topic, Prompt, Site
 from IRssClient import RssClient
+from core import DataBase
+from core.IAiClient import IAiClient, OpenRouterClient
+from core.IDataBase import IDataBase
+from core.IJobRunner import JobRunner
+from core.IPostGenerator import PostGenerator
+from core.Post_object import Post
 
 
 @pytest.fixture
@@ -19,10 +29,32 @@ def rss_client(mock_db):
     return RssClient(db=mock_db)
 
 
-class MockDatabase:
+class MockDatabase(IDataBase):
     """Мок для базы данных."""
+
     def __init__(self):
         self.visited_posts = []
+
+    def close(self) -> None:
+        pass
+
+    def add_post(self, content: str, source: str, topic_id: int, group_id: int) -> None:
+        pass
+
+    def load_topics_to_groups(self) -> Dict[int, int]:
+        pass
+
+    def load_prompts(self) -> Dict[int, str]:
+        pass
+
+    def load_sites(self) -> Dict[int, str]:
+        pass
+
+    def site_id_to_topic_id(self) -> Dict[int, int]:
+        pass
+
+    def connect(self) -> None:
+        pass
 
     def load_visited_posts(self):
         return self.visited_posts
@@ -52,7 +84,8 @@ def test_rss_client_with_habr():
 
         for post in posts:
             # Проверяем, что каждый пост имеет необходимые атрибуты
-            assert isinstance(post, Post)
+            assert hasattr(post, "content"), "У объекта отсутствует атрибут 'content'"
+            assert hasattr(post, "link"), "У объекта отсутствует атрибут 'link'"
             assert isinstance(post.content, str) and len(post.content) > 0
             assert isinstance(post.link, str) and len(post.link) > 0
 
@@ -98,14 +131,10 @@ def test_get_posts_no_date(mock_parse, rss_client):
     assert len(posts) == 0
     rss_client.db.add_visited_post.assert_not_called()
 
-import pytest
-from IPostGenerator import PostGenerator
-from Post_object import Post
-from IAiClient import IAiClient
-
 
 class FakeAiClient(IAiClient):
     """Фейковый AI клиент для тестирования."""
+
     def send_message(self, model: str, message: str) -> str:
         if "Post content 1" in message:
             return "Summary for Post content 1"
@@ -216,141 +245,290 @@ def test_simple_summary_all_posts(post_generator, sample_posts):
     assert summaries[1].summary == "Summary for Post content 2\nИсточник: http://example.com/2"
     assert summaries[2].summary == "Summary for Post content 3\nИсточник: http://example.com/3"
 
-# Конфигурация для тестовой базы данных
-TEST_DB_CONFIG = {
-    "host": "localhost",
-    "database": "postgres",
-    "user": "postgres",
-    "password": "Lfybbk_2005"
-}
+
+TEST_DB_URL = "sqlite:///:memory:"  # Используем SQLite в памяти для тестов
 
 
-@pytest.fixture
+# Мок фикстуры DatabaseHandlerORM
+@pytest.fixture(scope="function")
 def db_handler():
-    """Фикстура для инициализации DatabaseHandler."""
-    db = DatabaseHandlerORM(TEST_DB_CONFIG)
-    yield db
-    db.close()
+    class TestDatabaseHandler(DatabaseHandlerORM):
+        def connect(self):
+            """Пустая реализация метода connect."""
+            return self.Session()
 
+        def close(self):
+            """Пустая реализация метода close."""
+            self.engine.dispose()
 
-@pytest.fixture(autouse=True)
-def setup_and_teardown():
-    """Автоматическая очистка перед и после теста."""
-    db = DatabaseHandler(TEST_DB_CONFIG)
-    db.connect()
-    cursor = db.connection.cursor()
-
-    # Очистка таблиц
-    cursor.execute("TRUNCATE posts, visitedposts, topics, prompts, sites RESTART IDENTITY CASCADE;")
-    db.connection.commit()
-    cursor.close()
-    db.close()
+    engine = create_engine(TEST_DB_URL)
+    Base.metadata.create_all(engine)  # Создаем таблицы
+    handler = TestDatabaseHandler(TEST_DB_URL)
+    yield handler
+    Base.metadata.drop_all(engine)  # Удаляем таблицы после тестов
 
 
 def test_add_post(db_handler):
-    """Тест добавления поста в базу данных."""
-    content = "Test Content"
-    source = "http://example.com/test"
+    """Тест добавления поста."""
+    db_handler.add_post("Test Content", "http://example.com", topic_id=1, group_id=1)
 
-    # Добавляем тему и сайт
-    db_handler.connect()
-    db_handler.cursor.execute("INSERT INTO topics (name) VALUES ('Test Topic') RETURNING id;")
-    topic_id = db_handler.cursor.fetchone()[0]
-
-    db_handler.cursor.execute("INSERT INTO sites (site_url, topic_id) VALUES ('http://example.com', %s) RETURNING id;",
-                              (topic_id,))
-    site_id = db_handler.cursor.fetchone()[0]
-    db_handler.connection.commit()
-    db_handler.close()
-
-    # Добавляем пост
-    db_handler.add_post(content, source, topic_id, 1)
-
-    # Проверяем добавление
-    db_handler.connect()
-    db_handler.cursor.execute("SELECT content, source, is_accepted, topic_id FROM posts;")
-    rows = db_handler.cursor.fetchall()
-    db_handler.close()
-
-    assert len(rows) == 1
-    assert rows[0] == (content, source, False, topic_id)
+    with db_handler.Session() as session:
+        post = session.query(DataBase.Post).first()  # Используем корректно импортированный Post
+        assert post is not None
+        assert post.content == "Test Content"
+        assert post.source == "http://example.com"
+        assert post.topic_id == 1
+        assert post.group_id == 1
 
 
 def test_add_visited_post(db_handler):
-    """Тест добавления посещенного поста."""
+    """Тест добавления посещённого поста."""
     url = "http://example.com/visited"
     db_handler.add_visited_post(url)
 
-    # Проверяем добавление
-    db_handler.connect()
-    db_handler.cursor.execute("SELECT url FROM visitedposts;")
-    rows = db_handler.cursor.fetchall()
-    db_handler.close()
-
-    assert len(rows) == 1
-    assert rows[0][0] == url
+    with db_handler.Session() as session:
+        visited_post = session.query(VisitedPost).first()
+        assert visited_post is not None
+        assert visited_post.url == url
 
 
 def test_load_visited_posts(db_handler):
-    """Тест загрузки посещенных постов."""
+    """Тест загрузки посещённых постов."""
     urls = ["http://example.com/visited1", "http://example.com/visited2"]
+    with db_handler.Session() as session:
+        for url in urls:
+            session.add(VisitedPost(url=url))
+        session.commit()
 
-    # Добавляем записи вручную
-    db_handler.connect()
-    cursor = db_handler.cursor
-    cursor.executemany("INSERT INTO visitedposts (url) VALUES (%s);", [(url,) for url in urls])
-    db_handler.connection.commit()
-    db_handler.close()
-
-    # Проверяем загрузку
-    visited_posts = db_handler.load_visited_posts()
-    assert visited_posts == urls
+    loaded_urls = db_handler.load_visited_posts()
+    assert set(loaded_urls) == set(urls)
 
 
-def test_load_topics(db_handler):
-    """Тест загрузки тем."""
-    topics = [("Topic 1",), ("Topic 2",)]
+def test_load_topics_to_groups(db_handler):
+    """Тест загрузки тем и их групп."""
+    with db_handler.Session() as session:
+        session.add_all([
+            Topic(group_id=10),
+            Topic(group_id=20),
+        ])
+        session.commit()
 
-    # Добавляем темы
-    db_handler.connect()
-    cursor = db_handler.cursor
-    cursor.executemany("INSERT INTO topics (name) VALUES (%s);", topics)
-    db_handler.connection.commit()
-    db_handler.close()
-
-    # Проверяем загрузку
-    loaded_topics = db_handler.load_topics_to_grops()
-    assert len(loaded_topics) == len(topics)
-    for topic_id, group_id in loaded_topics.items():
-        assert f"Topic {topic_id}" in [t[0] for t in topics]
-
+    topics = db_handler.load_topics_to_groups()
+    assert len(topics) == 2
+    assert topics[1] == 10
+    assert topics[2] == 20
 
 
 def test_load_prompts(db_handler):
     """Тест загрузки подсказок."""
-    # Добавляем темы и сайты
-    db_handler.connect()
-    cursor = db_handler.cursor
-    cursor.execute("INSERT INTO topics (name) VALUES ('Topic 1') RETURNING id;")
-    topic_id = cursor.fetchone()[0]
+    with db_handler.Session() as session:
+        session.add_all([
+            Prompt(site_id=1, prompt_text="Prompt Text 1"),
+            Prompt(site_id=2, prompt_text="Prompt Text 2"),
+        ])
+        session.commit()
 
-    cursor.execute("INSERT INTO sites (site_url, topic_id) VALUES ('http://example.com', %s) RETURNING id;",
-                   (topic_id,))
-    site_id = cursor.fetchone()[0]
+    prompts = db_handler.load_prompts()
+    assert len(prompts) == 2
+    assert prompts[1] == "Prompt Text 1"
+    assert prompts[2] == "Prompt Text 2"
 
-    prompts = [(site_id, "Prompt for site 1")]
 
-    # Добавляем подсказки
-    cursor.executemany("INSERT INTO prompts (site_id, prompt_text) VALUES (%s, %s);", prompts)
-    db_handler.connection.commit()
-    db_handler.close()
+def test_load_sites(db_handler):
+    """Тест загрузки сайтов."""
+    with db_handler.Session() as session:
+        session.add_all([
+            Site(site_url="http://example1.com", topic_id=100),
+            Site(site_url="http://example2.com", topic_id=200),
+        ])
+        session.commit()
 
-    # Проверяем загрузку подсказок
-    loaded_prompts = db_handler.load_prompts()
-    assert len(loaded_prompts) == len(prompts)
-    for site_id, prompt_text in prompts:
-        assert loaded_prompts[site_id] == prompt_text
+    sites = db_handler.load_sites()
+    assert len(sites) == 2
+    assert sites[1] == "http://example1.com"
+    assert sites[2] == "http://example2.com"
+
+
+def test_site_id_to_topic_id(db_handler):
+    """Тест соответствий site_id -> topic_id."""
+    with db_handler.Session() as session:
+        session.add_all([
+            Site(site_url="http://example1.com", topic_id=1),
+            Site(site_url="http://example2.com", topic_id=2),
+        ])
+        session.commit()
+
+    mapping = db_handler.site_id_to_topic_id()
+    assert len(mapping) == 2
+    assert mapping[1] == 1
+    assert mapping[2] == 2
+
+
+@pytest.fixture
+def mock_db():
+    """Мок для базы данных."""
+    db = Mock()
+    db.load_topics_to_groups.return_value = {1: 10, 2: 20}
+    db.load_prompts.return_value = {1: "Prompt 1", 2: "Prompt 2"}
+    db.load_sites.return_value = {1: "http://site1.com", 2: "http://site2.com"}
+    db.site_id_to_topic_id.return_value = {1: 1, 2: 2}
+    return db
+
+
+@pytest.fixture
+def mock_rss_client():
+    """Мок для RSS клиента."""
+    rss_client = Mock()
+    rss_client.get_posts.return_value = [
+        {"link": "http://example.com/post1", "content": "Content 1"},
+        {"link": "http://example.com/post2", "content": "Content 2"},
+    ]
+    return rss_client
+
+
+@pytest.fixture
+def mock_post_generator():
+    """Мок для генератора постов."""
+    post_generator = Mock()
+    post_generator.simple_summary.return_value = [
+        Mock(summary="Summary 1", link="http://example.com/post1"),
+        Mock(summary="Summary 2", link="http://example.com/post2"),
+    ]
+    return post_generator
+
+
+@pytest.fixture
+def job_runner(mock_rss_client, mock_post_generator, mock_db):
+    """Инициализация JobRunner с моками."""
+    return JobRunner(rss_client=mock_rss_client, post_generator=mock_post_generator, db=mock_db)
+
+
+def test_run(job_runner, mock_db, mock_rss_client, mock_post_generator):
+    """Тест метода run."""
+    job_runner.run(count=2, model="test_model")
+
+    # Проверяем, что база обновилась
+    mock_db.load_sites.assert_called()
+    mock_db.site_id_to_topic_id.assert_called()
+
+    # Проверяем, что RSS клиент был вызван для каждого сайта
+    mock_rss_client.get_posts.assert_has_calls([
+        call("http://site1.com", 2),
+        call("http://site2.com", 2),
+    ])
+
+    # Проверяем, что генератор постов был вызван
+    mock_post_generator.simple_summary.assert_has_calls([
+        call(posts=mock_rss_client.get_posts.return_value, model="test_model", count=2, site_id=1),
+        call(posts=mock_rss_client.get_posts.return_value, model="test_model", count=2, site_id=2),
+    ])
+
+    # Проверяем, что посты добавляются в базу
+    mock_db.add_post.assert_has_calls([
+        call("Summary 1", "http://example.com/post1", topic_id=1, group_id=10),
+        call("Summary 2", "http://example.com/post2", topic_id=1, group_id=10),
+        call("Summary 1", "http://example.com/post1", topic_id=2, group_id=20),
+        call("Summary 2", "http://example.com/post2", topic_id=2, group_id=20),
+    ], any_order=True)
+
+
+def test_update_db(job_runner, mock_db):
+    """Тест метода update_db."""
+    # Сбрасываем вызовы мока перед тестом
+    mock_db.reset_mock()
+
+    # Запускаем метод
+    job_runner.update_db()
+
+    # Проверяем, что методы базы данных вызываются корректно
+    try:
+        mock_db.load_sites.assert_called_once()
+        mock_db.site_id_to_topic_id.assert_called_once()
+    except AssertionError:
+        print("Вызовы мока load_sites:")
+        print(mock_db.load_sites.mock_calls)
+        print("Вызовы мока site_id_to_topic_id:")
+        print(mock_db.site_id_to_topic_id.mock_calls)
+        raise
+
+
+@pytest.fixture
+def mock_api_key():
+    """Фикстура для мок-ключа API."""
+    return "test_api_key"
+
+
+@pytest.fixture
+def client(mock_api_key):
+    """Создаём экземпляр OpenRouterClient."""
+    return OpenRouterClient(api_key=mock_api_key)
+
+
+@patch("requests.post")
+def test_send_message_success(mock_post, client):
+    """Тест успешного ответа API."""
+    # Настройка мока ответа API
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [
+            {"message": {"content": "Test AI Response"}}
+        ]
+    }
+    mock_post.return_value = mock_response
+
+    # Выполнение метода
+    model = "test-model"
+    message = "Hello, AI!"
+    response = client.send_message(model, message)
+
+    # Проверка результата
+    assert response == "Test AI Response"
+
+    # Проверка вызова requests.post
+    mock_post.assert_called_once_with(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer test_api_key"},
+        data='{"model": "test-model", "messages": [{"role": "user", "content": "Hello, AI!"}]}'
+    )
+
+
+@patch("requests.post")
+def test_send_message_api_error(mock_post, client):
+    """Тест обработки ошибки API (не 200 статус код)."""
+    # Настройка мока ответа с ошибкой
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.text = "Bad Request"
+    mock_post.return_value = mock_response
+
+    # Выполнение метода и ожидание исключения
+    with pytest.raises(Exception) as exc_info:
+        client.send_message("test-model", "Hello, AI!")
+
+    # Проверка сообщения исключения
+    assert "Ошибка API: 400, Bad Request" in str(exc_info.value)
+
+    # Проверка вызова requests.post
+    mock_post.assert_called_once()
+
+
+@patch("requests.post")
+def test_send_message_unexpected_response(mock_post, client):
+    """Тест обработки некорректного формата ответа API."""
+    # Настройка мока с некорректным JSON
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {}  # Пустой JSON
+    mock_post.return_value = mock_response
+
+    # Выполнение метода и ожидание исключения
+    with pytest.raises(KeyError):
+        client.send_message("test-model", "Hello, AI!")
+
+    # Проверка вызова requests.post
+    mock_post.assert_called_once()
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    

@@ -1,6 +1,8 @@
 ﻿from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship, InstrumentedAttribute
 
+from core.IDataBase import IDataBase
+
 Base = declarative_base()
 
 
@@ -40,7 +42,7 @@ class Site(Base):
     topic_id = Column(Integer, nullable=False)
 
 
-class DatabaseHandlerORM:
+class DatabaseHandlerORM(IDataBase):
     def __init__(self, db_url: str):
         self.engine = create_engine(db_url)
         Base.metadata.create_all(self.engine)
