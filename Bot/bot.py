@@ -1,12 +1,12 @@
 import asyncio
-from aiogram import Bot, Dispatcher, Router, types, F
+from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import KeyboardButton, InlineKeyboardButton
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram import F
-from db import DBOperator
+from Bot.db import DBOperator
 import logging
-from post_status import PostStatus
+from Bot.post_status import PostStatus
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +24,11 @@ class BotHandler:
         self.topic = ""
         self.posts = []
 
+        self.start_keyboard = self.get_start_keyboard()
+        self.moderation_keyboard = self.get_moderation_keyboard()
+        self.continue_keyboard = self.get_continue_keyboard()
+        self.return_keyboard = self.get_return_keyboard()
+
     def setup_handlers(self):
         self.router.message(CommandStart())(self.cmd_start)
         self.router.message(F.text == "В главное меню")(self.cmd_start)
@@ -33,24 +38,28 @@ class BotHandler:
         self.router.message(F.text == "Отклонить пост")(self.handle_decline)
         self.router.callback_query(F.data.startswith("chose"))(self.chose_topic)
 
-    def get_start_keyboard(self):
+    @staticmethod
+    def get_start_keyboard():
         keyboard = ReplyKeyboardBuilder()
         keyboard.add(KeyboardButton(text="Модерировать посты"))
         return keyboard.as_markup(resize_keyboard=True)
 
-    def get_moderation_keyboard(self):
+    @staticmethod
+    def get_moderation_keyboard():
         keyboard = ReplyKeyboardBuilder()
         keyboard.add(KeyboardButton(text="Принять пост"))
         keyboard.add(KeyboardButton(text="Отклонить пост"))
         return keyboard.as_markup(resize_keyboard=True)
 
-    def get_continue_keyboard(self):
+    @staticmethod
+    def get_continue_keyboard():
         keyboard = ReplyKeyboardBuilder()
         keyboard.add(KeyboardButton(text="Продолжить модерацию"))
         keyboard.add(KeyboardButton(text="В главное меню"))
         return keyboard.as_markup(resize_keyboard=True)
 
-    def get_return_keyboard(self):
+    @staticmethod
+    def get_return_keyboard():
         keyboard = ReplyKeyboardBuilder()
         keyboard.add(KeyboardButton(text="В главное меню"))
         return keyboard.as_markup(resize_keyboard=True)
@@ -67,7 +76,7 @@ class BotHandler:
 
     async def chose_topic(self, callback_query: types.CallbackQuery):
         self.topic = callback_query.data.split("_", 1)[1]
-        await callback_query.message.answer(f"Вы выбрали тему {self.topic}", reply_markup=self.get_continue_keyboard())
+        await callback_query.message.answer("Вы выбрали тему " + f"{self.topic}", reply_markup=self.continue_keyboard)
         await callback_query.answer()
 
     async def handle_moderation(self, message: types.Message):
@@ -76,12 +85,12 @@ class BotHandler:
             await message.answer("Эта команда доступна только администраторам.")
             return
         if self.topic == "":
-            await message.answer(f"Тема постов не выбрана", reply_markup=self.get_return_keyboard())
+            await message.answer("Тема постов не выбрана", reply_markup=self.return_keyboard)
         else:
             self.posts = self.operator.get_posts_by_topic(self.topic)
             if self.posts:
                 post = self.posts[0]
-                await message.answer(f"Содержание поста: {post.content}", reply_markup=self.get_moderation_keyboard())
+                await message.answer("Содержание поста: " + f"{post.content}", reply_markup=self.moderation_keyboard)
             else:
                 await message.answer("Нет доступных постов для модерации.")
 
@@ -89,13 +98,13 @@ class BotHandler:
         post = self.posts.pop(0)
         post.status = PostStatus.ACCEPTED
         self.operator.update_post(post)
-        await message.answer("Пост принят!", reply_markup=self.get_continue_keyboard())
+        await message.answer("Пост принят!", reply_markup=self.continue_keyboard)
 
     async def handle_decline(self, message: types.Message):
         post = self.posts.pop(0)
         post.status = PostStatus.DECLINED
         self.operator.update_post(post)
-        await message.answer("Пост отклонён!", reply_markup=self.get_continue_keyboard())
+        await message.answer("Пост отклонён!", reply_markup=self.continue_keyboard)
 
     async def run(self):
         self.dp.include_router(self.router)

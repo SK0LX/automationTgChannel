@@ -1,14 +1,8 @@
 import psycopg2
-from post import Post
-from post_status import PostStatus
+from Bot.post import Post
+from Bot.post_status import PostStatus
 
-DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'TgAuto',
-    'user': 'postgres',
-    'password': 'admin',
-    'port': '5432'
-}
+DB_CONFIG = {}
 
 
 class DBOperator:

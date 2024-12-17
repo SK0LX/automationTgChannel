@@ -1,4 +1,4 @@
-from post_status import PostStatus
+from Bot.post_status import PostStatus
 
 
 class Post:
