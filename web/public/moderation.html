@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="apple-touch-icon" sizes="57x57" href="fav/apple-icon-57x57.png">
     <link rel="apple-touch-icon" sizes="60x60" href="fav/apple-icon-60x60.png">
     <link rel="apple-touch-icon" sizes="72x72" href="fav/apple-icon-72x72.png">
@@ -20,29 +23,32 @@
     <meta name="msapplication-TileImage" content="fav/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="styles/login.css">
+    <link rel="stylesheet" href="styles/moderation.css">
 </head>
 <body>
-    <form action="/login" method="POST">
-        <!-- Логотип и заголовок в один ряд -->
+    <div class="container">
         <div class="header">
             <img src="img/logo.jpg" alt="Logo" class="logo">
-            <div class="form-title">Log In</div>
+            <h2>Moderation Panel</h2>
         </div>
+        <form id="registration-form">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter username" required>
 
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
-        
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        
-        <button type="submit">Login</button>
-        
-        <!-- Отображение сообщения об ошибке -->
-        <div class="error-message">
-            <script src="scripts/login.js"></script>
-        </div>
-    </form>
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password" required>
+
+            <label for="group-id">Group ID</label>
+            <input type="number" id="group-id" placeholder="Max group ID: loading..." required>
+
+            <label for="telegram-id">Telegram ID</label>
+            <input type="text" id="telegram-id" placeholder="Enter Telegram ID" required>
+
+            <div id="error-message" class="error" style="display: none;"></div>
+
+            <button type="submit">Register User</button>
+        </form>
+    </div>
+    <script src="scripts/moderation.js"></script>
 </body>
 </html>

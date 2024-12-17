@@ -50,6 +50,10 @@ app.get('/admin', authenticateToken, (req, res) => {
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
+    if (!username || !password) {
+        return res.status(400).send('Username and password are required.');
+    }
+
     try {
         const result = await pool.query('SELECT * FROM admins WHERE username = $1', [username]);
         const user = result.rows[0];
@@ -58,35 +62,53 @@ app.post('/login', async (req, res) => {
             return res.redirect('/login?error=Invalid credentials');
         }
 
-        // Create JWT token
-        const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '1h' });
+        // Извлекаем group_id пользователя
+        const { id, group_id } = user;
+        const role = user.id === 1 ? 'admin' : 'user';
 
-        // Сохраняем токен в cookie и перенаправляем на админку
-        res.cookie('token', token, { httpOnly: true }); // Устанавливаем токен в cookie
-        res.redirect('/admin'); // Перенаправляем на админку
+        // Создаем JWT с учетом group_id
+        const token = jwt.sign(
+            { id: user.id, role, group_id: user.group_id },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        // Устанавливаем токен в cookie
+        res.cookie('token', token, { httpOnly: true });
+
+        // Перенаправляем в зависимости от group_id
+        const redirectUrl =
+            id === 1
+                ? 'http://127.0.0.1:5000/moderation'
+                : `/admin`;
+        res.redirect(redirectUrl);
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+        console.error('Error during login:', err);
+        res.status(500).send('Server error.');
     }
 });
 
-// Route: Получение всех топиков
+
 app.get('/topics', authenticateToken, async (req, res) => {
+    const { group_id } = req.user;
+
     try {
-        const result = await pool.query('SELECT * FROM topics');
-        res.json(result.rows);
+        const result = await pool.query('SELECT * FROM topics WHERE group_id = $1', [group_id]);
+        res.json(result.rows); // Возвращаем только топики, доступные для группы
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+        console.error('Error fetching topics:', err);
+        res.status(500).send('Server error.');
     }
 });
+
 
 // Route: Добавление нового топика
 app.post('/topics/add', authenticateToken, async (req, res) => {
     const { name } = req.body;
+    const { group_id } = req.user;
 
     try {
-        await pool.query('INSERT INTO topics (name) VALUES ($1)', [name]);
+        await pool.query('INSERT INTO topics (name, group_id) VALUES ($1, $2)', [name, group_id]);
         res.status(201).send('Topic added');
     } catch (err) {
         console.error(err);
@@ -106,6 +128,32 @@ app.post('/admin', authenticateToken, async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+// Route: Обновление поста
+app.post('/posts/edit/:postId', authenticateToken, async (req, res) => {
+    const { postId } = req.params;
+    const { content } = req.body;
+
+    // Проверка наличия содержимого
+    if (!content || content.trim() === '') {
+        return res.status(400).send('Content is required');
+    }
+
+    try {
+        // Обновление записи в базе данных
+        const result = await pool.query('UPDATE posts SET content = $1 WHERE id = $2 RETURNING *', [content.trim(), postId]);
+        
+        if (result.rowCount === 0) {
+            return res.status(404).send('Post not found');
+        }
+
+        res.status(200).json({ message: 'Post updated successfully', post: result.rows[0] });
+    } catch (err) {
+        console.error('Error updating post:', err.message);
+        res.status(500).send('Internal server error');
+    }
+});
+
 
 // Route: Обработка действий с постами (принять/отклонить)
 app.post('/posts/:postId/:action', authenticateToken, async (req, res) => {
@@ -170,9 +218,9 @@ app.post('/sites/add', authenticateToken, async (req, res) => {
 
 // Route: Получение промтов по топику
 app.get('/prompts/:topicId', authenticateToken, async (req, res) => {
-    const { topicId } = req.params;
+    const { siteId } = req.params;
     try {
-        const result = await pool.query('SELECT * FROM prompts WHERE topic_id = $1', [topicId]);
+        const result = await pool.query('SELECT * FROM prompts WHERE site_id = $1', [siteId]);
         res.json(result.rows);
         //console.log(res);
     } catch (err) {
@@ -181,12 +229,33 @@ app.get('/prompts/:topicId', authenticateToken, async (req, res) => {
     }
 });
 
-// Route: Добавление нового промта
-app.post('/prompts/add', authenticateToken, async (req, res) => {
-    const { text, topicId } = req.body;
+// Route: Получение промптов для конкретного сайта
+app.get('/get-prompts', authenticateToken, async (req, res) => {
+    const { site } = req.query; // Получаем siteId из параметров запроса
+
+    if (!site) {
+        return res.status(400).send('Site ID is required');
+    }
 
     try {
-        await pool.query('INSERT INTO prompts (prompt_text, topic_id) VALUES ($1, $2)', [text, topicId]);
+        const result = await pool.query('SELECT * FROM prompts WHERE site_id = $1', [site]);
+        res.json(result.rows); // Возвращаем массив промптов
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server error');
+    }
+});
+
+// Route: Добавление нового промпта
+app.post('/add-prompt', authenticateToken, async (req, res) => {
+    const { site, text } = req.body; // Получаем siteId и текст промпта из тела запроса
+
+    if (!site || !text) {
+        return res.status(400).send('Site ID and prompt text are required');
+    }
+
+    try {
+        await pool.query('INSERT INTO prompts (prompt_text, site_id) VALUES ($1, $2)', [text, site]);
         res.status(201).send('Prompt added');
     } catch (err) {
         console.error(err);
@@ -239,7 +308,6 @@ app.get('/tg-channel/:topicId', authenticateToken, async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-
 
 
 // Запуск сервера
