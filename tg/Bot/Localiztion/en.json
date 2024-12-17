@@ -1,0 +1,15 @@
+{
+    "to_menu": "To main menu",
+    "moderate": "Moderate posts",
+    "continue": "Continue moderation",
+    "accept": "Accept post",
+    "decline": "Decline post",
+    "greet": "Hello! Choose a topic for posts:",
+    "chose": "You selected the topic ",
+    "restricted": "This command is only available to administrators.",
+    "no_topic": "No topic selected",
+    "contents": "Post content: ",
+    "no_posts": "No posts available for moderation.",
+    "post_accepted": "Post accepted!",
+    "post_declined": "Post declined!"
+}

@@ -1,4 +1,4 @@
-from Bot.post_status import PostStatus
+from tg.Bot.Scripts.post_status import PostStatus
 
 
 class Post:

@@ -1,8 +1,17 @@
 import psycopg2
-from Bot.post import Post
-from Bot.post_status import PostStatus
+from tg.Bot.Scripts.post import Post
+from tg.Bot.Scripts.post_status import PostStatus
+import yaml
 
-DB_CONFIG = {}
+with open("../../../core/config.yaml", "r", encoding="utf-8-sig") as config_file:
+    config_data = yaml.safe_load(config_file)
+
+DB_CONFIG = {
+    'user': config_data['db']['user'],
+    'password': config_data['db']['password'],
+    'host': config_data['db']['host'],
+    'database': config_data['db']['database']
+}
 
 
 class DBOperator:

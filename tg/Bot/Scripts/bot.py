@@ -4,9 +4,9 @@ from aiogram.types import KeyboardButton, InlineKeyboardButton
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram import F
-from Bot.db import DBOperator
+from tg.Bot.Scripts.db import DBOperator
 import logging
-from Bot.post_status import PostStatus
+from tg.Bot.Scripts.post_status import PostStatus
 
 logging.basicConfig(level=logging.INFO)
 

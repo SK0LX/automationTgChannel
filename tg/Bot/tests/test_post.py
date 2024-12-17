@@ -1,8 +1,8 @@
 import unittest
 from datetime import datetime
 
-from Bot.post import Post
-from Bot.post_status import PostStatus
+from tg.Bot.Scripts.post import Post
+from tg.Bot.Scripts.post_status import PostStatus
 
 
 class TestPost(unittest.TestCase):
