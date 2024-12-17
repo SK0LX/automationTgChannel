@@ -2,7 +2,6 @@
 from typing import List
 
 from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 
 import Post_object
 
