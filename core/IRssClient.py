@@ -3,8 +3,8 @@
 from bs4 import BeautifulSoup
 from typing import List
 import feedparser
-from core.IDataBase import IDataBase
-from core import Post_object
+from IDataBase import IDataBase
+import Post_object
 
 
 class IRssClient:

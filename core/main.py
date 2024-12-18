@@ -1,7 +1,7 @@
 ﻿import time
 import schedule
 import argparse
-from core.DIContainer import AppContainer
+from DIContainer import AppContainer
 
 
 def main():

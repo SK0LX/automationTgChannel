@@ -1,7 +1,7 @@
 ﻿from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship, InstrumentedAttribute
 
-from core.IDataBase import IDataBase
+from IDataBase import IDataBase
 
 Base = declarative_base()
 
