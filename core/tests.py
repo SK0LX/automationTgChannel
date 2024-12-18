@@ -18,8 +18,8 @@ from core.Post_object import Post
 def mock_db():
     """Фикстура для мокнутой базы данных."""
     db = MagicMock()
-    db.load_visited_posts.return_value = ["http://visited.com"]  # Посты, которые уже были посещены
-    db.add_visited_post = MagicMock()  # Для проверки, добавляется ли новый пост
+    db.load_visited_posts.return_value = ["http://visited.com"]
+    db.add_visited_post = MagicMock()
     return db
 
 
@@ -65,31 +65,24 @@ class MockDatabase(IDataBase):
 
 def test_rss_client_with_habr():
     """Тест RssClient с использованием реального RSS-канала."""
-    # URL реального RSS-канала
     rss_url = "https://habr.com/ru/rss/articles/"
 
-    # Мок базы данных
     mock_db = MockDatabase()
 
-    # Создаем экземпляр RssClient
     rss_client = RssClient(db=mock_db)
 
     try:
-        # Получаем посты
         posts = rss_client.get_posts(rss_url, count=5)
 
-        # Проверяем, что возвращается список
         assert isinstance(posts, list)
-        assert len(posts) > 0  # Убедитесь, что есть хотя бы один пост
+        assert len(posts) > 0
 
         for post in posts:
-            # Проверяем, что каждый пост имеет необходимые атрибуты
             assert hasattr(post, "content"), "У объекта отсутствует атрибут 'content'"
             assert hasattr(post, "link"), "У объекта отсутствует атрибут 'link'"
             assert isinstance(post.content, str) and len(post.content) > 0
             assert isinstance(post.link, str) and len(post.link) > 0
 
-            # Проверяем, что ссылки добавляются в список посещенных
             assert post.link in mock_db.load_visited_posts()
 
         print("Тест прошел успешно: Все посты корректны.")
@@ -107,7 +100,6 @@ def test_get_posts_bozo_error(mock_parse, rss_client):
 
     posts = rss_client.get_posts("http://example.com/rss", count=2)
 
-    # Проверяем, что ничего не возвращается при ошибке
     assert len(posts) == 0
 
 
@@ -127,7 +119,6 @@ def test_get_posts_no_date(mock_parse, rss_client):
 
     posts = rss_client.get_posts("http://example.com/rss", count=1)
 
-    # Проверяем, что посты без даты публикации пропускаются
     assert len(posts) == 0
     rss_client.db.add_visited_post.assert_not_called()
 
@@ -142,7 +133,7 @@ class FakeAiClient(IAiClient):
             return "Summary for Post content 2"
         elif "Post content 3" in message:
             return "Summary for Post content 3"
-        return None  # Для проверки случаев некорректного ответа
+        return None
 
 
 @pytest.fixture
@@ -181,13 +172,10 @@ def test_generate_creates_summaries(post_generator, sample_posts):
     model = "test-model"
     site_id = 1
 
-    # Вызываем метод
     summaries = post_generator.generate(posts=sample_posts, model=model, site_id=site_id)
 
-    # Проверяем, что количество сводок соответствует числу постов
     assert len(summaries) == len(sample_posts)
 
-    # Проверяем содержимое summary для каждого поста
     assert summaries[0].summary == "Summary for Post content 1\nИсточник: http://example.com/1"
     assert summaries[1].summary == "Summary for Post content 2\nИсточник: http://example.com/2"
     assert summaries[2].summary == "Summary for Post content 3\nИсточник: http://example.com/3"
@@ -198,14 +186,11 @@ def test_generate_ignores_invalid_summaries(post_generator, sample_posts):
     model = "test-model"
     site_id = 1
 
-    # Устанавливаем некорректный контент для одного из постов
-    sample_posts[0].content = "Invalid content"  # FakeAiClient вернет None для этого контента
+    sample_posts[0].content = "Invalid content" 
 
-    # Вызываем метод
     summaries = post_generator.generate(posts=sample_posts, model=model, site_id=site_id)
 
-    # Проверяем, что только валидные посты возвращены
-    assert len(summaries) == 2  # Один пост с некорректным контентом отфильтровался
+    assert len(summaries) == 2
 
     # Проверяем содержимое summary для валидных постов
     assert summaries[0].summary == "Summary for Post content 2\nИсточник: http://example.com/2"
@@ -218,13 +203,10 @@ def test_simple_summary_limited_posts(post_generator, sample_posts):
     site_id = 1
     count = 2
 
-    # Вызываем метод
     summaries = post_generator.simple_summary(posts=sample_posts, model=model, count=count, site_id=site_id)
 
-    # Проверяем, что обрабатываются только каждые count-й пост
-    assert len(summaries) == 2  # sample_posts[0] и sample_posts[2]
+    assert len(summaries) == 2
 
-    # Проверяем содержимое summary для выбранных постов
     assert summaries[0].summary == "Summary for Post content 1\nИсточник: http://example.com/1"
     assert summaries[1].summary == "Summary for Post content 3\nИсточник: http://example.com/3"
 
@@ -233,23 +215,18 @@ def test_simple_summary_all_posts(post_generator, sample_posts):
     """Тест, проверяющий создание кратких версий для всех постов."""
     model = "test-model"
     site_id = 1
-    count = 5  # Больше длины sample_posts
+    count = 5 
 
-    # Вызываем метод
     summaries = post_generator.simple_summary(posts=sample_posts, model=model, count=count, site_id=site_id)
-    # Проверяем, что обрабатываются все посты
     assert len(summaries) == len(sample_posts)
-
-    # Проверяем содержимое summary для каждого поста
     assert summaries[0].summary == "Summary for Post content 1\nИсточник: http://example.com/1"
     assert summaries[1].summary == "Summary for Post content 2\nИсточник: http://example.com/2"
     assert summaries[2].summary == "Summary for Post content 3\nИсточник: http://example.com/3"
 
 
-TEST_DB_URL = "sqlite:///:memory:"  # Используем SQLite в памяти для тестов
+TEST_DB_URL = "sqlite:///:memory:" 
 
 
-# Мок фикстуры DatabaseHandlerORM
 @pytest.fixture(scope="function")
 def db_handler():
     class TestDatabaseHandler(DatabaseHandlerORM):
@@ -262,10 +239,10 @@ def db_handler():
             self.engine.dispose()
 
     engine = create_engine(TEST_DB_URL)
-    Base.metadata.create_all(engine)  # Создаем таблицы
+    Base.metadata.create_all(engine) 
     handler = TestDatabaseHandler(TEST_DB_URL)
     yield handler
-    Base.metadata.drop_all(engine)  # Удаляем таблицы после тестов
+    Base.metadata.drop_all(engine)
 
 
 def test_add_post(db_handler):
@@ -273,7 +250,7 @@ def test_add_post(db_handler):
     db_handler.add_post("Test Content", "http://example.com", topic_id=1, group_id=1)
 
     with db_handler.Session() as session:
-        post = session.query(DataBase.Post).first()  # Используем корректно импортированный Post
+        post = session.query(DataBase.Post).first() 
         assert post is not None
         assert post.content == "Test Content"
         assert post.source == "http://example.com"
@@ -411,19 +388,16 @@ def test_run(job_runner, mock_db, mock_rss_client, mock_post_generator):
     mock_db.load_sites.assert_called()
     mock_db.site_id_to_topic_id.assert_called()
 
-    # Проверяем, что RSS клиент был вызван для каждого сайта
     mock_rss_client.get_posts.assert_has_calls([
         call("http://site1.com", 2),
         call("http://site2.com", 2),
     ])
 
-    # Проверяем, что генератор постов был вызван
     mock_post_generator.simple_summary.assert_has_calls([
         call(posts=mock_rss_client.get_posts.return_value, model="test_model", count=2, site_id=1),
         call(posts=mock_rss_client.get_posts.return_value, model="test_model", count=2, site_id=2),
     ])
 
-    # Проверяем, что посты добавляются в базу
     mock_db.add_post.assert_has_calls([
         call("Summary 1", "http://example.com/post1", topic_id=1, group_id=10),
         call("Summary 2", "http://example.com/post2", topic_id=1, group_id=10),
@@ -434,13 +408,10 @@ def test_run(job_runner, mock_db, mock_rss_client, mock_post_generator):
 
 def test_update_db(job_runner, mock_db):
     """Тест метода update_db."""
-    # Сбрасываем вызовы мока перед тестом
     mock_db.reset_mock()
 
-    # Запускаем метод
     job_runner.update_db()
 
-    # Проверяем, что методы базы данных вызываются корректно
     try:
         mock_db.load_sites.assert_called_once()
         mock_db.site_id_to_topic_id.assert_called_once()
@@ -477,15 +448,12 @@ def test_send_message_success(mock_post, client):
     }
     mock_post.return_value = mock_response
 
-    # Выполнение метода
     model = "test-model"
     message = "Hello, AI!"
     response = client.send_message(model, message)
 
-    # Проверка результата
     assert response == "Test AI Response"
 
-    # Проверка вызова requests.post
     mock_post.assert_called_once_with(
         url="https://openrouter.ai/api/v1/chat/completions",
         headers={"Authorization": f"Bearer test_api_key"},
@@ -496,37 +464,30 @@ def test_send_message_success(mock_post, client):
 @patch("requests.post")
 def test_send_message_api_error(mock_post, client):
     """Тест обработки ошибки API (не 200 статус код)."""
-    # Настройка мока ответа с ошибкой
     mock_response = MagicMock()
     mock_response.status_code = 400
     mock_response.text = "Bad Request"
     mock_post.return_value = mock_response
 
-    # Выполнение метода и ожидание исключения
     with pytest.raises(Exception) as exc_info:
         client.send_message("test-model", "Hello, AI!")
 
-    # Проверка сообщения исключения
     assert "Ошибка API: 400, Bad Request" in str(exc_info.value)
 
-    # Проверка вызова requests.post
     mock_post.assert_called_once()
 
 
 @patch("requests.post")
 def test_send_message_unexpected_response(mock_post, client):
     """Тест обработки некорректного формата ответа API."""
-    # Настройка мока с некорректным JSON
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {}  # Пустой JSON
     mock_post.return_value = mock_response
 
-    # Выполнение метода и ожидание исключения
     with pytest.raises(KeyError):
         client.send_message("test-model", "Hello, AI!")
 
-    # Проверка вызова requests.post
     mock_post.assert_called_once()
 
 

@@ -5,17 +5,17 @@ from dependency_injector import containers, providers
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-import DataBase
-from IAiClient import OpenRouterClient
-from IJobRunner import JobRunner
-from IPostGenerator import PostGenerator
-from IRssClient import RssClient
+from core.IAiClient import OpenRouterClient
+from core.IJobRunner import JobRunner
+from core.IPostGenerator import PostGenerator
+from core.IRssClient import RssClient
+from core import DataBase
 
 
 class AppContainer(containers.DeclarativeContainer):
     """Dependency Injection Container"""
 
-    with open("config.yaml", "r", encoding="utf-8-sig") as config_file:
+    with open("core/config.yaml", "r", encoding="utf-8-sig") as config_file:
         config_data = yaml.safe_load(config_file)
 
     connection_string = providers.Object(

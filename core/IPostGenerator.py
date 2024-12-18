@@ -1,7 +1,7 @@
 ﻿from typing import List
 
-import Post_object
-from IAiClient import IAiClient
+from core.IAiClient import IAiClient
+from core import Post_object
 
 
 class IPostGenerator:

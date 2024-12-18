@@ -1,8 +1,8 @@
 ﻿import time
 
-from IDataBase import IDataBase
-from IPostGenerator import IPostGenerator
-from IRssClient import IRssClient
+from core.IDataBase import IDataBase
+from core.IPostGenerator import IPostGenerator
+from core.IRssClient import IRssClient
 
 
 class JobRunner:
