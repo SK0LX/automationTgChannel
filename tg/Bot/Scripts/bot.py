@@ -16,9 +16,10 @@ API_TOKEN = '7743955009:AAHjuvBY-_U_-pCql3W-4TWzAz7hbNU5A3Q'
 class BotHandler:
     def __init__(self, token: str):
         self.bot = Bot(token=token)
+        self.group = 0
         self.dp = Dispatcher()
         self.router = Router()
-        self.operator = DBOperator()
+        self.operator = DBOperator(self.group)
         self.ADMINS = self.operator.get_admin_ids()
         self.setup_handlers()
         self.topic = ""
@@ -72,7 +73,11 @@ class BotHandler:
         return keyboard.as_markup()
 
     async def cmd_start(self, message: types.Message):
-        await message.answer("Привет! Выбери тему постов:", reply_markup=self.get_topics_keyboard())
+        user_id = message.from_user.id
+        name = self.operator.get_admin_name(user_id)
+        self.group = self.operator.get_group_id(user_id)
+        self.operator.update_group_topics(self.group)
+        await message.answer(f"Привет, {name}! Выбери тему постов:", reply_markup=self.get_topics_keyboard())
 
     async def chose_topic(self, callback_query: types.CallbackQuery):
         self.topic = callback_query.data.split("_", 1)[1]
@@ -87,7 +92,7 @@ class BotHandler:
         if self.topic == "":
             await message.answer("Тема постов не выбрана", reply_markup=self.return_keyboard)
         else:
-            self.posts = self.operator.get_posts_by_topic(self.topic)
+            self.posts = self.operator.get_posts_by_topic_and_group_id(self.topic, self.group)
             if self.posts:
                 post = self.posts[0]
                 await message.answer("Содержание поста: " + f"{post.content}", reply_markup=self.moderation_keyboard)

@@ -15,16 +15,37 @@ DB_CONFIG = {
 
 
 class DBOperator:
-    def __init__(self):
+    def __init__(self, group_id):
         self.connection = psycopg2.connect(**DB_CONFIG)
         self.cursor = self.connection.cursor()
-        self.topics = self.get_topics()
+        self.topics = self.get_topics_by_group(group_id)
+
+    def update_group_topics(self, group_id):
+        self.topics = self.get_topics_by_group(group_id)
 
     def get_admin_ids(self):
         try:
             self.cursor.execute("SELECT telegram_id FROM admins;")
             telegram_ids = self.cursor.fetchall()
             return [telegram_id[0] for telegram_id in telegram_ids]
+
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
+
+    def get_admin_name(self, user_id):
+        try:
+            self.cursor.execute(f"SELECT username FROM admins WHERE telegram_id = {user_id};")
+            username = self.cursor.fetchall()
+            return username[0][0]
+
+        except Exception as e:
+            print(f"Произошла ошибка: {e}")
+
+    def get_group_id(self, user_id):
+        try:
+            self.cursor.execute(f"SELECT group_id FROM admins WHERE telegram_id = {user_id};")
+            group_id = self.cursor.fetchall()
+            return group_id[0][0]
 
         except Exception as e:
             print(f"Произошла ошибка: {e}")
@@ -41,9 +62,9 @@ class DBOperator:
         except Exception as e:
             print(f"Произошла ошибка: {e}")
 
-    def get_topics(self):
+    def get_topics_by_group(self, group_id):
         try:
-            self.cursor.execute("SELECT name, id FROM topics;")
+            self.cursor.execute(f"SELECT name, id FROM topics WHERE group_id = {group_id};")
             topics = {}
             lines = self.cursor.fetchall()
             for line in lines:
@@ -53,11 +74,11 @@ class DBOperator:
         except Exception as e:
             print(f"Произошла ошибка: {e}")
 
-    def get_posts_by_topic(self, topic_name):
+    def get_posts_by_topic_and_group_id(self, topic_name, group_id):
         try:
             topic_id = self.topics[topic_name]
             self.cursor.execute(f"SELECT id, content, created_at, is_accepted FROM posts WHERE is_accepted = FALSE "
-                                f"AND topic_id = {topic_id};")
+                                f"AND topic_id = {topic_id} AND group_id = {group_id};")
             posts = []
             lines = self.cursor.fetchall()
             for line in lines:
