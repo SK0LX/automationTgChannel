@@ -77,6 +77,9 @@ class BotHandler:
         name = self.operator.get_admin_name(user_id)
         self.group = self.operator.get_group_id(user_id)
         self.operator.update_group_topics(self.group)
+        if user_id not in self.ADMINS:
+            await message.answer("Эта команда доступна только администраторам.")
+            return
         await message.answer(f"Привет, {name}! Выбери тему постов:", reply_markup=self.get_topics_keyboard())
 
     async def chose_topic(self, callback_query: types.CallbackQuery):
